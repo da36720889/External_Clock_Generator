@@ -30,17 +30,17 @@ module LPF#(i_WIDTH = 16, WIDTH = 32, N_TAPS = 63)(
     output reg o_valid
 );
 
-reg [6:0] counter;
-always@(posedge clk or negedge rst_n)begin
-    if(!rst_n) counter <= 0;
-    else if(i_valid)begin
-        if(counter == N_TAPS) counter <= counter;
-        else counter <= counter + 1;
-    end else counter <= 0;
-end
-always@(*)begin
-    o_valid = (counter == N_TAPS) ? 1 : 0;
-end
+// reg [6:0] counter;
+// always@(posedge clk or negedge rst_n)begin
+//     if(!rst_n) counter <= 0;
+//     else if(i_valid)begin
+//         if(counter == N_TAPS) counter <= counter;
+//         else counter <= counter + 1;
+//     end else counter <= 0;
+// end
+// always@(*)begin
+//     o_valid = (counter == N_TAPS) ? 1 : 0;
+// end
 
 reg signed [15+WIDTH:0] data_d1, data_d2, data_d3, data_d4, data_d5, data_d6, data_d7, data_d8,
                  data_d9, data_d10, data_d11, data_d12, data_d13, data_d14, data_d15, data_d16,

@@ -50,6 +50,8 @@ always@(posedge clk or negedge rst_n)begin  // imaginary part delay 1 clk
     if(!rst_n) im_data <= 0;
     else im_data <= i_data_r;
 end
+
+reg signed [WIDTH-1:0] im_first_result_r, re_first_result_r;
 /////////////////////////////////////////////////////////////////////////////////////////
 // calculate for first part of imag part 
 reg signed [WIDTH*2-1:0] im_mul1_o;
@@ -78,9 +80,9 @@ reg signed [WIDTH-1:0] im_sub2_o, im_add2_d0, im_add2_d1, im_add2_d2;
 reg signed [WIDTH-1:0] im_result_r;
 
 always@(*)begin
-    im_sub2_o = im_add2_d2 - im_first_result;
+    im_sub2_o = im_add2_d2 - im_first_result_r;
     im_mul2_o = (im_sub2_o * i_coef2) >>> 15;
-    im_add2_d0 = im_mul2_o + im_first_result;
+    im_add2_d0 = im_mul2_o + im_first_result_r;
     im_result_r = im_add2_d2 + im_mul2_o;
 end
 always@(posedge clk or negedge rst_n)begin
@@ -120,9 +122,9 @@ reg signed [WIDTH-1:0] re_sub2_o, re_add2_d0, re_add2_d1, re_add2_d2;
 reg signed [WIDTH-1:0] re_result_r;
 
 always@(*)begin
-    re_sub2_o = re_add2_d2 - re_first_result;
+    re_sub2_o = re_add2_d2 - re_first_result_r;
     re_mul2_o = (re_sub2_o * r_coef2) >>> 15;
-    re_add2_d0 = re_mul2_o + re_first_result;
+    re_add2_d0 = re_mul2_o + re_first_result_r;
     re_result_r = re_add2_d2 + re_mul2_o;
 end
 always@(posedge clk or negedge rst_n)begin
@@ -134,7 +136,17 @@ always@(posedge clk or negedge rst_n)begin
         re_add2_d2 <= re_add2_d1;
     end
 end
-
+///////////////////////////////////////////////////////////////////////////////////////
+// pipeline for first and second part of calculation
+always@(posedge clk or negedge rst_n)begin
+    if(!rst_n)begin
+        im_first_result_r <= 0;
+        re_first_result_r <= 0;
+    end else begin
+        im_first_result_r <= im_first_result;
+        re_first_result_r <= re_first_result;
+    end
+end
 ///////////////////////////////////////////////////////////////////////////////////////
 always@(posedge clk or negedge rst_n)begin
     if(!rst_n)begin
@@ -147,7 +159,7 @@ always@(posedge clk or negedge rst_n)begin
 end
 
 // ** IIR do not have regular latency can be count, here use nearest delay
-reg i_valid_d1, i_valid_d2, i_valid_d3, i_valid_d4, i_valid_d5, i_valid_d6, i_valid_d7, i_valid_d8, i_valid_d9;
+reg i_valid_d1, i_valid_d2, i_valid_d3, i_valid_d4, i_valid_d5, i_valid_d6, i_valid_d7, i_valid_d8, i_valid_d9, i_valid_d10;
 always@(posedge clk or negedge rst_n)begin
     if(!rst_n)begin
         i_valid_d1 <= 0;
@@ -159,6 +171,7 @@ always@(posedge clk or negedge rst_n)begin
         i_valid_d7 <= 0;
         i_valid_d8 <= 0;
         i_valid_d9 <= 0;
+        i_valid_d10 <= 0;
     end else begin
         i_valid_d1 <= i_valid;
         i_valid_d2 <= i_valid_d1;
@@ -169,10 +182,11 @@ always@(posedge clk or negedge rst_n)begin
         i_valid_d7 <= i_valid_d6;
         i_valid_d8 <= i_valid_d7;
         i_valid_d9 <= i_valid_d8;
+        i_valid_d10 <= i_valid_d9;
     end
 end
 always@(*)begin
-    o_valid = i_valid_d9;
+    o_valid = i_valid_d10;
 end
 
 endmodule

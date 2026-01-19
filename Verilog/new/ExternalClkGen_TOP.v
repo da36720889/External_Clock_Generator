@@ -30,16 +30,26 @@ module ExternalClkGen_TOP#(WIDTH = 16)(
     );
 
 reg [WIDTH-1:0] i_data_r;
+reg i_valid_r;
 always@(posedge clk or negedge rst_n)begin
-    if(!rst_n) i_data_r <= 0;
-    else i_data_r <= i_data;
+    if(!rst_n) begin
+        i_data_r <= 0;
+        i_valid_r <= 0;
+    end else begin
+        i_data_r <= i_data;
+        i_valid_r <= i_valid;
+    end
 end
 
 reg [WIDTH-1:0] i_DC;
-wire signed [WIDTH-1:0] o_DC;
 reg signed [WIDTH-1:0] i_LPF;
-wire signed [WIDTH*2-1:0] o_LPF, o_IIR, o_HILBERT_i, o_HILBERT_r, trigger_w;
 reg signed [WIDTH*2-1:0] i_IIR, i_HILBERT, i_ARCTAN_i, i_ARCTAN_r;
+wire signed [WIDTH-1:0] o_DC;
+wire signed [WIDTH*2-1:0] o_LPF, o_IIR, o_HILBERT_i, o_HILBERT_r;
+wire trigger_w;
+
+reg i_valid_LPF, i_valid_HT, i_valid_ARC;
+wire o_valid_DC, o_valid_LPF, o_valid_HT;
 
 always@(*)begin
     i_DC = i_data_r;
@@ -49,28 +59,37 @@ always@(*)begin
     i_HILBERT = o_LPF;
     i_ARCTAN_i = o_HILBERT_i;
     i_ARCTAN_r = o_HILBERT_r;
+
+    i_valid_LPF = o_valid_DC;
+    i_valid_HT = o_valid_LPF;
+    i_valid_ARC = o_valid_HT;
 end
 
-always@(posedge clk or negedge rst_n)begin
-    if(!rst_n) o_trigger <= 0;
-    else o_trigger <= trigger_w;
+// always@(posedge clk or negedge rst_n)begin
+//     if(!rst_n) o_trigger <= 0;
+//     else o_trigger <= trigger_w;
+// end
+always@(*)begin
+    o_trigger = trigger_w;
 end
 
 DCremover u_DCremover(
     .clk(clk),
     .rst_n(rst_n),
     .i_data(i_DC),
-    .i_valid(i_valid),
+    .i_valid(i_valid_r),
     .o_data(o_DC),
-    .o_valid()
+    .o_valid(o_valid_DC)
     );
+    
 
 LPF u_lpf(
     .clk(clk),
     .rst_n(rst_n),
     .i_data(i_LPF),
-    .i_valid(i_valid),
-    .o_data(o_LPF)
+    .i_valid(i_valid_LPF),
+    .o_data(o_LPF),
+    .o_valid(o_valid_LPF)
     );
 
 // IIR u_IIR(
@@ -85,10 +104,10 @@ hilbert_iir uu_hilbert_iir(
     .clk(clk),
     .rst_n(rst_n),
     .i_data(i_HILBERT),
-    .i_valid(i_valid),
+    .i_valid(i_valid_HT),
     .o_data_i(o_HILBERT_i),
     .o_data_r(o_HILBERT_r),
-    .o_valid()
+    .o_valid(o_valid_HT)
 );
 
 arctan_unwrap uu_arctan_unwrap(
@@ -96,7 +115,7 @@ arctan_unwrap uu_arctan_unwrap(
     .rst_n(rst_n),
     .i_data_woHT(i_ARCTAN_r),
     .i_data_wHT(i_ARCTAN_i),
-    .i_valid(i_valid),
+    .i_valid(i_valid_ARC),
     .o_data(),
     .trigger(trigger_w),
     .o_ready()

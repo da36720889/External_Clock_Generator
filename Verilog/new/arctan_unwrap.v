@@ -20,7 +20,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module arctan_unwrap#(WIDTH = 32, theta_WIDTH = 32, DECIMAL_WIDTH = 15)(
+module arctan_unwrap#(WIDTH = 16, theta_WIDTH = 32, DECIMAL_WIDTH = 15)(
     input wire clk,
     input wire rst_n,
     input wire signed [WIDTH - 1 : 0] i_data_woHT,
@@ -77,7 +77,7 @@ wire signed [theta_WIDTH :0] theta_diff;
 wire [1:0] unwrap_sig;  // 00: wo unwrap, 01: minus 2pi, 10: plus 2pi
 assign theta_diff = o_theta_w - o_theta_r;
 assign unwrap_sig = (theta_diff > 33'sh010000000) ? 2'b01 : ((theta_diff < -33'sh010000000) ? 2'b10 : 2'b00);
-reg signed [theta_WIDTH*2:0] theta_acc;
+reg signed [theta_WIDTH+15:0] theta_acc;
 
 always@(posedge clk or negedge rst_n)begin
     if(!rst_n)theta_acc <= 0;
@@ -90,17 +90,23 @@ always@(posedge clk or negedge rst_n)begin
     end
 end
 
-reg signed [theta_WIDTH*1 + 10:0] unwrapped_theta_w;
+reg signed [theta_WIDTH*1 + 15:0] unwrapped_theta_scaled;   // added to prevent hold time violation
 reg signed [theta_WIDTH*1:0] unwrapped_theta;
+reg signed [theta_WIDTH*1:0] unwrapped_theta_w;
 reg signed [theta_WIDTH*1:0] unwrapped_theta_r;
 
 always@(*)begin
-    unwrapped_theta_w = (o_theta_r + theta_acc) >>> FIXED_FREQ;
+    unwrapped_theta_scaled = (o_theta_r + theta_acc) >>> FIXED_FREQ;
 end
 
 always@(posedge clk or negedge rst_n)begin
-    if(!rst_n) unwrapped_theta_r <= 0;
-    else unwrapped_theta_r <= unwrapped_theta_w;
+    if(!rst_n)begin
+        unwrapped_theta_w <= 0;
+        unwrapped_theta_r <= 0;
+    end else begin
+        unwrapped_theta_w <= unwrapped_theta_scaled;
+        unwrapped_theta_r <= unwrapped_theta_w;
+    end
 end
 
 wire signed [theta_WIDTH*1:0] unwrapped_diff;
@@ -115,7 +121,7 @@ always @(posedge clk or negedge rst_n) begin
         diff_sum <= 0;
         trigger_w <= 0;
     end 
-    else if(/*|i_data_woHT != 0*/i_valid)begin
+    else if(i_valid)begin
         if(diff_sum >= K_grid_scaled)begin
             diff_sum <= 0 + unwrapped_diff;
             trigger_w <= 1;
@@ -136,8 +142,11 @@ always@(*)begin
 end
 
 // fixed point decimal (29-FIXED_FREQ) bits, if interpolation is needed, K_grid_scaled should pass to oct_remapping
+reg signed [theta_WIDTH*1:0] o_data_r;
 always@(*)begin
-    o_data = diff_sum[DECIMAL_WIDTH:0];
+    // o_data = diff_sum[DECIMAL_WIDTH:0];     // wrong logic, useless for interpolation
+    o_data_r = (diff_sum >= K_grid_scaled) ? (diff_sum - K_grid_scaled) : (K_grid_scaled - diff_sum);
+    o_data = o_data_r[DECIMAL_WIDTH:0];
 end
 
 endmodule

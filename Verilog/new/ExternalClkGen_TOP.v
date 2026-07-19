@@ -43,9 +43,9 @@ end
 
 reg [WIDTH-1:0] i_DC;
 reg signed [WIDTH-1:0] i_LPF;
-reg signed [WIDTH*2-1:0] i_IIR, i_HILBERT, i_ARCTAN_i, i_ARCTAN_r;
+reg signed [WIDTH-1:0] i_IIR, i_HILBERT, i_ARCTAN_i, i_ARCTAN_r;
 wire signed [WIDTH-1:0] o_DC;
-wire signed [WIDTH*2-1:0] o_LPF, o_IIR, o_HILBERT_i, o_HILBERT_r;
+wire signed [WIDTH-1:0] o_LPF, o_IIR, o_HILBERT_i, o_HILBERT_r;
 wire trigger_w;
 
 reg i_valid_LPF, i_valid_HT, i_valid_ARC;
@@ -65,10 +65,6 @@ always@(*)begin
     i_valid_ARC = o_valid_HT;
 end
 
-// always@(posedge clk or negedge rst_n)begin
-//     if(!rst_n) o_trigger <= 0;
-//     else o_trigger <= trigger_w;
-// end
 always@(*)begin
     o_trigger = trigger_w;
 end
@@ -83,7 +79,8 @@ DCremover u_DCremover(
     );
     
 
-LPF u_lpf(
+// LPF u_lpf(
+LPF_fixed u_lpf(
     .clk(clk),
     .rst_n(rst_n),
     .i_data(i_LPF),
@@ -91,14 +88,6 @@ LPF u_lpf(
     .o_data(o_LPF),
     .o_valid(o_valid_LPF)
     );
-
-// IIR u_IIR(
-//     .clk(clk),
-//     .rst_n(rst_n),
-//     .i_data(i_IIR),
-//     .i_valid(i_valid),
-//     .o_data(o_IIR)
-//     );
 
 hilbert_iir uu_hilbert_iir(
     .clk(clk),

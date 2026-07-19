@@ -20,7 +20,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module hilbert_iir#(WIDTH = 32)(
+module hilbert_iir#(WIDTH = 16, COE_WIDTH = 16)(
     input wire clk,
     input wire rst_n,
     input wire signed [WIDTH-1:0] i_data,
@@ -54,7 +54,7 @@ end
 reg signed [WIDTH-1:0] im_first_result_r, re_first_result_r;
 /////////////////////////////////////////////////////////////////////////////////////////
 // calculate for first part of imag part 
-reg signed [WIDTH*2-1:0] im_mul1_o;
+reg signed [WIDTH+COE_WIDTH:0] im_mul1_o;
 reg signed [WIDTH-1:0] im_sub1_o, im_add1_d0, im_add1_d1, im_add1_d2;
 reg signed [WIDTH-1:0] im_first_result;
 
@@ -75,7 +75,7 @@ always@(posedge clk or negedge rst_n)begin
 end
 /////////////////////////////////////////////////////////////////////////////////////////
 // calculate for second part of imag part 
-reg signed [WIDTH*2-1:0] im_mul2_o;
+reg signed [WIDTH+COE_WIDTH:0] im_mul2_o;
 reg signed [WIDTH-1:0] im_sub2_o, im_add2_d0, im_add2_d1, im_add2_d2;
 reg signed [WIDTH-1:0] im_result_r;
 
@@ -96,7 +96,7 @@ always@(posedge clk or negedge rst_n)begin
 end
 /////////////////////////////////////////////////////////////////////////////////////////
 // calculate for first part of real part 
-reg signed [WIDTH*2-1:0] re_mul1_o;
+reg signed [WIDTH+COE_WIDTH:0] re_mul1_o;
 reg signed [WIDTH-1:0] re_sub1_o, re_add1_d0, re_add1_d1, re_add1_d2;
 reg signed [WIDTH-1:0] re_first_result;
 
@@ -117,7 +117,7 @@ always@(posedge clk or negedge rst_n)begin
 end
 /////////////////////////////////////////////////////////////////////////////////////////
 // calculate for second part of real part 
-reg signed [WIDTH*2-1:0] re_mul2_o;
+reg signed [WIDTH+COE_WIDTH:0] re_mul2_o;
 reg signed [WIDTH-1:0] re_sub2_o, re_add2_d0, re_add2_d1, re_add2_d2;
 reg signed [WIDTH-1:0] re_result_r;
 
@@ -148,18 +148,24 @@ always@(posedge clk or negedge rst_n)begin
     end
 end
 ///////////////////////////////////////////////////////////////////////////////////////
+reg signed [WIDTH - 1:0] o_data_i_r, o_data_r_r;    // hold time violation, add additional registers
 always@(posedge clk or negedge rst_n)begin
     if(!rst_n)begin
+        o_data_i_r <= 0;
+        o_data_r_r <= 0;
         o_data_i <= 0;
         o_data_r <= 0;
     end else begin
-        o_data_i <= im_result_r;
-        o_data_r <= re_result_r;
+        o_data_i_r <= im_result_r;
+        o_data_r_r <= re_result_r;
+        o_data_i <= o_data_i_r;
+        o_data_r <= o_data_r_r;
     end
 end
 
 // ** IIR do not have regular latency can be count, here use nearest delay
-reg i_valid_d1, i_valid_d2, i_valid_d3, i_valid_d4, i_valid_d5, i_valid_d6, i_valid_d7, i_valid_d8, i_valid_d9, i_valid_d10;
+reg i_valid_d1, i_valid_d2, i_valid_d3, i_valid_d4, i_valid_d5, i_valid_d6, i_valid_d7,
+         i_valid_d8, i_valid_d9, i_valid_d10, i_valid_d11;
 always@(posedge clk or negedge rst_n)begin
     if(!rst_n)begin
         i_valid_d1 <= 0;
@@ -172,6 +178,7 @@ always@(posedge clk or negedge rst_n)begin
         i_valid_d8 <= 0;
         i_valid_d9 <= 0;
         i_valid_d10 <= 0;
+        i_valid_d11 <= 0;
     end else begin
         i_valid_d1 <= i_valid;
         i_valid_d2 <= i_valid_d1;
@@ -183,10 +190,11 @@ always@(posedge clk or negedge rst_n)begin
         i_valid_d8 <= i_valid_d7;
         i_valid_d9 <= i_valid_d8;
         i_valid_d10 <= i_valid_d9;
+        i_valid_d11 <= i_valid_d10;
     end
 end
 always@(*)begin
-    o_valid = i_valid_d10;
+    o_valid = i_valid_d11;
 end
 
 endmodule
